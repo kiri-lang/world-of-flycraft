@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World of Flycraft — MaleCNS first person</title>
+<style>
+:root{
+  --gold:#e8c86a; --g2:#8a5a18; --ink:#0c0a12; --parch:#f3e6c4; --teal:#4de8d2; --hp:#c0392b; --mana:#5b8cff;
+  --disp:"Palatino Linotype", Palatino, Georgia, serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#07060c;color:var(--parch);font-family:var(--mono)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hex{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.14;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='22'><polygon points='13,1 24,7 24,15 13,21 2,15 2,7' fill='none' stroke='%234de8d2' stroke-width='1'/></svg>")}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:3;
+  background:radial-gradient(circle at 50% 46%,transparent 38%,rgba(8,6,14,.78) 100%)}
+#scan{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:.18;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px)}
+.panel{background:linear-gradient(180deg,rgba(18,12,8,.92),rgba(8,6,10,.94));
+  border:1px solid var(--g2); box-shadow:0 8px 28px rgba(0,0,0,.55), inset 0 0 20px rgba(77,232,210,.06)}
+#hud{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;transition:opacity .5s}
+#hud.on{opacity:1}
+#unit{position:absolute;top:12px;left:12px;display:flex;gap:10px;padding:10px 12px;pointer-events:auto;min-width:300px}
+#port-wrap{position:relative;width:78px;height:78px}
+#port-img,#port-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#port-frame{pointer-events:none}
+#who{font-family:var(--disp);font-size:18px;color:var(--gold)}
+#title2{font-size:10px;letter-spacing:.16em;color:#9a7a48;text-transform:uppercase;margin:2px 0 8px}
+.bar{position:relative;height:13px;background:#1a0c0c;border:1px solid #5a2818;margin-top:4px;overflow:hidden}
+.bar i{display:block;height:100%}
+#hp-fill{width:100%;background:linear-gradient(90deg,#6b1111,#e74c3c)}
+#dopa-fill{width:20%;background:linear-gradient(90deg,#3d2a86,#4de8d2)}
+.bar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff}
+#brainWrap{position:absolute;left:50%;bottom:96px;transform:translateX(-8%);width:min(380px,55vw);pointer-events:none}
+#brainHud{display:block;width:100%;height:110px;background:rgba(6,8,16,.55);border:1px solid rgba(77,232,210,.35)}
+#brainCap{text-align:center;font-size:10px;letter-spacing:.22em;color:var(--teal);margin-top:4px;text-transform:uppercase}
+#photo{position:absolute;bottom:96px;left:12px;padding:10px;width:168px}
+.bars{display:flex;gap:4px;align-items:flex-end;height:42px;margin-top:6px}
+.bars i{flex:1;background:linear-gradient(#4de8d2,#e8c86a);height:20%}
+#quest{position:absolute;top:12px;right:136px;width:240px;padding:12px;pointer-events:auto}
+.pt{font-family:var(--disp);color:var(--gold);letter-spacing:.12em;font-size:12px;margin-bottom:6px;text-transform:uppercase}
+#minimap-wrap{position:absolute;top:12px;right:12px;padding:6px}
+#minimap{display:block;background:#101810}
+#target{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:8px 16px;min-width:200px;text-align:center;display:none}
+#target.on{display:block}
+#chat{position:absolute;bottom:96px;right:12px;width:300px;height:140px;padding:8px;display:flex;flex-direction:column;pointer-events:auto;font-size:11px}
+#chat-lines{flex:1;overflow:auto;line-height:1.4}
+.ch-g{color:#8aff7a}.ch-p{color:#7ec8ff}.ch-s{color:#c4a06a}.ch-q{color:#ffe08a}.ch-n{color:var(--teal)}
+#bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto}
+.slot{width:52px;height:52px;border:1px solid var(--g2);background:rgba(12,8,6,.85);position:relative;cursor:pointer}
+.slot img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.slot kbd{position:absolute;left:3px;top:2px;font-size:9px;color:var(--gold)}
+#inv{position:absolute;right:12px;bottom:96px;width:280px;padding:12px;display:none;pointer-events:auto}
+#inv.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.cell{aspect-ratio:1;border:1px solid #5a3a18;background:#140e08;display:flex;align-items:center;justify-content:center}
+.cell img{width:78%;height:78%;object-fit:contain}
+#zone{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-family:var(--disp);font-size:40px;color:var(--gold);text-shadow:0 4px 20px #000;opacity:0;letter-spacing:.14em}
+#mode{position:absolute;top:86px;left:12px;font-size:11px;letter-spacing:.18em;color:var(--teal);text-transform:uppercase}
+#isaacHud{position:absolute;top:108px;left:12px;max-width:340px;font-size:11px;line-height:1.4;color:#9ee;letter-spacing:.04em}
+#isaacHud b{color:var(--gold);font-weight:600}
+#flyRig{position:absolute;left:16%;bottom:9%;height:min(32vh,270px);width:auto;z-index:5;pointer-events:none;
+  transform-origin:50% 78%; will-change:transform;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.55)); opacity:.96}
+#title{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:linear-gradient(180deg,rgba(8,6,14,.4),rgba(8,6,14,.88)), url("sprites/orchardshire-vista.png") center/cover;transition:opacity .7s}
+#title.gone{opacity:0;pointer-events:none}
+.k{letter-spacing:.42em;color:var(--teal);font-size:12px}
+h1{font-family:var(--disp);font-size:clamp(42px,8vw,86px);line-height:.9;color:var(--parch);text-shadow:0 0 28px rgba(77,232,210,.35);margin:10px 0}
+.sub{max-width:560px;color:#d8c8a8;font-size:14px;line-height:1.5;margin-bottom:22px}
+#enter{font-family:var(--disp);letter-spacing:.2em;padding:14px 32px;background:#120e18;border:1px solid var(--teal);color:var(--teal);cursor:pointer;font-size:16px}
+#enter:hover{background:var(--teal);color:#0c0a12}
+.foot{margin-top:16px;font-size:11px;color:#7a6848}
+#toast{position:fixed;top:32%;left:50%;transform:translateX(-50%);z-index:9;font-family:var(--disp);font-size:22px;color:var(--gold);opacity:0;pointer-events:none;text-shadow:0 2px 12px #000}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<canvas id="brainHud" width="840" height="220" style="display:none"></canvas>
+<div id="hex"></div><div id="vignette"></div><div id="scan"></div>
+<div id="hud">
+  <div id="unit" class="panel">
+    <div id="port-wrap">
+      <img id="port-img" src="sprites/fly-adventurer.png" alt="">
+      <img id="port-frame" src="sprites/gold-frame.png" alt="">
+    </div>
+    <div>
+      <div id="who">Sir Buzzington</div>
+      <div id="title2">MaleCNS paladin · 166,700 neurons</div>
+      <div class="bar"><i id="hp-fill"></i><span id="hp-text">100 / 100</span></div>
+      <div class="bar"><i id="dopa-fill"></i><span>PPL101 dopamine</span></div>
+    </div>
+  </div>
+  <div id="mode">CONNECTOME AUTOPILOT · the fly is playing</div>
+  <div id="isaacHud">Isaac cortex: <b id="isaacState">idle</b><br><span id="isaacNote">waiting for first sensory volley</span></div>
+  <div id="target" class="panel"><div id="t-name">Moss-Hog</div><div class="bar"><i id="t-hp" style="background:linear-gradient(#6b1,#3d4);width:100%"></i></div></div>
+  <div id="quest" class="panel"><div class="pt">Internal state</div><div id="quest-body"></div></div>
+  <div id="minimap-wrap" class="panel"><canvas id="minimap" width="120" height="120"></canvas></div>
+  <div id="photo" class="panel"><div class="pt">R1–R6</div><div class="bars" id="bars"></div></div>
+  <div id="brainWrap">
+    <canvas id="brainView" width="840" height="220"></canvas>
+    <div id="brainCap">MaleCNS v1.0 · descending votes · optic lobes</div>
+  </div>
+  <div id="chat" class="panel"><div class="pt">Combat log</div><div id="chat-lines"></div></div>
+  <div id="inv" class="panel">
+    <div class="pt">Bags</div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div id="bar">
+    <div class="slot" data-a="1"><kbd>1</kbd><img src="sprites/icon-sword.png" alt=""></div>
+    <div class="slot" data-a="2"><kbd>2</kbd><img src="sprites/icon-potion.png" alt=""></div>
+    <div class="slot" data-a="3"><kbd>3</kbd><img src="sprites/quest-peach.png" alt=""></div>
+    <div class="slot" data-a="b"><kbd>B</kbd><img src="sprites/icon-bag.png" alt=""></div>
+  </div>
+  <div id="zone">Orchardshire</div>
+  <div id="hint">Autonomous cortex · T drop sugar · G loom/startle · F take over · B bags</div>
+  <canvas id="flyRig" width="640" height="640" alt="Sir Buzzington"></canvas>
+</div>
+<div id="toast"></div>
+<div id="title">
+  <div class="k">MALE CNS v1.0 × A HIGH-FANTASY MMO TOY</div>
+  <h1>WORLD OF<br>FLYCRAFT</h1>
+  <p class="sub">You are the fly. Compound-eye first person — Sir Buzzington’s face sits in the lower view. Local DNs fire every frame; Isaac is the cortex. Original orchard world.</p>
+  <button id="enter">LET THE FLY PLAY</button>
+  <div class="foot">Needs this page via the Flycraft server so Isaac can tick. A toy. Not a mind.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="brain.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+for (let i=0;i<6;i++){ const el=document.createElement('i'); el.id='r'+i; $('bars').appendChild(el); }
+const invItems = [
+  {img:'sprites/icon-sword.png', n:'Needle-sword'},
+  {img:'sprites/icon-potion.png', n:'Synapse flask'},
+  {img:'sprites/quest-peach.png', n:'Quest peach'},
+  {img:'sprites/icon-bag.png', n:'Pollen pouch'},
+  {img:'sprites/health-orb.png', n:'Heart orb'}
+];
+const grid=$('grid');
+for(let i=0;i<15;i++){
+  const c=document.createElement('div'); c.className='cell';
+  if(invItems[i]){ const im=document.createElement('img'); im.src=invItems[i].img; im.title=invItems[i].n; c.appendChild(im); }
+  grid.appendChild(c);
+}
+
+let flyParts=null;
+function splitFly(srcCanvas){
+  const w=srcCanvas.width, h=srcCanvas.height;
+  const g=srcCanvas.getContext('2d');
+  const d=g.getImageData(0,0,w,h), p=d.data;
+  const body=document.createElement('canvas'); body.width=w; body.height=h;
+  const wings=document.createElement('canvas'); wings.width=w; wings.height=h;
+  const sword=document.createElement('canvas'); sword.width=w; sword.height=h;
+  const bp=g.createImageData(w,h), wp=g.createImageData(w,h), sp=g.createImageData(w,h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4, a=p[i+3];
+      if(!a) continue;
+      const nx=x/w, ny=y/h, r=p[i], gv=p[i+1], b=p[i+2];
+      const lum=(r+gv+b)/3, sat=Math.max(r,gv,b)-Math.min(r,gv,b);
+      const pale=lum>155 && sat<70;
+      const irid=(gv>150 && b>150 && r>120 && ny<0.55);
+      const isWing=nx>0.48 && ny<0.50 && a>18 && (pale||irid) && !(r>170 && gv>130 && b<90);
+      const steel=Math.abs(r-gv)<28 && Math.abs(gv-b)<28 && lum>85 && lum<215;
+      const isSword=nx<0.36 && ny>0.40 && a>18 && (steel || (nx<0.18 && lum>90));
+      const tgt=isWing?wp.data:isSword?sp.data:bp.data;
+      tgt[i]=r; tgt[i+1]=gv; tgt[i+2]=b; tgt[i+3]=a;
+      if(!isWing && !isSword){ bp.data[i]=r; bp.data[i+1]=gv; bp.data[i+2]=b; bp.data[i+3]=a; }
+    }
+  }
+  body.getContext('2d').putImageData(bp,0,0);
+  wings.getContext('2d').putImageData(wp,0,0);
+  sword.getContext('2d').putImageData(sp,0,0);
+  flyParts={body,wings,sword,w,h};
+}
+function drawFlyPose(t, haste){
+  const rig=$('flyRig'); if(!rig||!flyParts) return;
+  const ctx=rig.getContext('2d');
+  const W=rig.width, H=rig.height;
+  ctx.clearRect(0,0,W,H);
+  const flap=Math.sin(t*0.028*(0.65+haste*1.4))*0.38;
+  const flap2=Math.sin(t*0.028*(0.65+haste*1.4)+0.5)*0.28;
+  const swing=Math.sin(t*0.0065)*0.12 + (haste>0.7?Math.sin(t*0.02)*0.18:0);
+  ctx.save();
+  ctx.translate(W*0.62, H*0.27);
+  ctx.rotate(-0.25+flap);
+  const grd=ctx.createRadialGradient(0,0,6,0,0,130);
+  grd.addColorStop(0,'rgba(210,245,255,0.45)');
+  grd.addColorStop(0.55,'rgba(230,170,210,0.22)');
+  grd.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=grd;
+  ctx.beginPath(); ctx.ellipse(48,-8,118,40,0,0,7); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.58, H*0.30);
+  ctx.rotate(flap);
+  ctx.scale(1, 0.72+flap*0.35);
+  ctx.drawImage(flyParts.wings, -W*0.58, -H*0.30, W, H);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(W*0.62, H*0.26);
+  ctx.rotate(-flap2*0.7);
+  ctx.globalAlpha=0.7;
+  ctx.scale(0.92, 0.65+flap2*0.3);
+  ctx.drawImage(flyParts.wings, -W*0.62, -H*0.26, W, H);
+  ctx.restore();
+  ctx.drawImage(flyParts.body, 0, 0, W, H);
+  ctx.save();
+  ctx.translate(W*0.30, H*0.58);
+  ctx.rotate(swing);
+  ctx.drawImage(flyParts.sword, -W*0.30, -H*0.58, W, H);
+  ctx.restore();
+}
+function punchTex(src, onReady){
+  const t=new THREE.Texture(); t.colorSpace=THREE.SRGBColorSpace;
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement('canvas'); c.width=img.width; c.height=img.height;
+    const g=c.getContext('2d'); g.drawImage(img,0,0);
+    const d=g.getImageData(0,0,c.width,c.height), p=d.data;
+    for(let i=0;i<p.length;i+=4){
+      const r=p[i],gv=p[i+1],b=p[i+2];
+      const mx=Math.max(r,gv,b), mn=Math.min(r,gv,b);
+      if(mn>228 && mx-mn<22) p[i+3]=0;
+      else if(r>205 && gv>205 && b>205 && mx-mn<30) p[i+3]=0;
+      else if(r<90 && gv>190 && b<90) p[i+3]=0;
+    }
+    g.putImageData(d,0,0);
+    t.image=c; t.needsUpdate=true;
+    if(src.indexOf('fly-adventurer')>=0){
+      $('port-img').src=c.toDataURL();
+      splitFly(c);
+    }
+    if(onReady) onReady(t);
+  };
+  img.src=src;
+  return t;
+}
+
+const renderer=new THREE.WebGLRenderer({canvas:$('c'), antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.18;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0xd2c09a, 0.007);
+const camera=new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.05, 320);
+camera.rotation.order='YXZ';
+scene.add(camera);
+
+const vista=punchTex('sprites/orchardshire-vista.png');
+const sky=new THREE.Mesh(new THREE.SphereGeometry(180, 48, 24), new THREE.MeshBasicMaterial({map:vista, side:THREE.BackSide, depthWrite:false}));
+scene.add(sky);
+function seedRand(i){ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+
+const ground=new THREE.Mesh(new THREE.CircleGeometry(82, 72), new THREE.MeshStandardMaterial({color:0x4f7c38, roughness:.92}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+[[0x6a9448,38],[0x8aab58,22],[0x3d5e28,55]].forEach(([c,r],i)=>{
+  const p=new THREE.Mesh(new THREE.CircleGeometry(r, 40), new THREE.MeshStandardMaterial({color:c, roughness:.95}));
+  p.rotation.x=-Math.PI/2; p.position.y=0.01+i*0.004; p.position.x=(i-1)*4; scene.add(p);
+});
+const path=new THREE.Mesh(new THREE.PlaneGeometry(2.6, 58), new THREE.MeshStandardMaterial({color:0x8a6a42, roughness:.88}));
+path.rotation.x=-Math.PI/2; path.position.y=0.035; scene.add(path);
+const pathEdge=new THREE.Mesh(new THREE.PlaneGeometry(3.15, 58), new THREE.MeshStandardMaterial({color:0x6a4e30, roughness:1}));
+pathEdge.rotation.x=-Math.PI/2; pathEdge.position.y=0.028; scene.add(pathEdge);
+
+scene.add(new THREE.HemisphereLight(0xffe4c4, 0x1c2e14, 0.95));
+const sun=new THREE.DirectionalLight(0xffd9a0, 1.45); sun.position.set(22,34,14);
+sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=2; sun.shadow.camera.far=90;
+sun.shadow.camera.left=-40; sun.shadow.camera.right=40;
+sun.shadow.camera.top=40; sun.shadow.camera.bottom=-40;
+scene.add(sun);
+const rim=new THREE.DirectionalLight(0xffc8e8, 0.28); rim.position.set(-16,12,-10); scene.add(rim);
+const fill=new THREE.PointLight(0x4de8d2, 0.22, 14); camera.add(fill); fill.position.set(0.1,-0.05,-0.5);
+
+function spr(tex,w,h){
+  const m=new THREE.SpriteMaterial({map:tex, transparent:true, alphaTest:0.15, depthWrite:false});
+  const s=new THREE.Sprite(m); s.scale.set(w,h,1); return s;
+}
+const flyTex=punchTex('sprites/fly-adventurer.png');
+const hogTex=punchTex('sprites/moss-hog.png');
+const beetleTex=punchTex('sprites/quest-beetle.png');
+const wyrmTex=punchTex('sprites/peach-wyrm.png');
+const peachTex=punchTex('sprites/quest-peach.png');
+
+const heroMat=new THREE.SpriteMaterial({map:flyTex, transparent:true, alphaTest:0.12, depthTest:true, depthWrite:false});
+const hero=new THREE.Sprite(heroMat);
+hero.scale.set(0.55, 0.55, 1);
+hero.renderOrder=8;
+scene.add(hero);
+const flyMot={yaw:0, turn:0, bob:0, x:0, y:0, rot:0};
+
+function makePeachTree(x,z,i){
+  const g=new THREE.Group();
+  const sc=0.75+seedRand(i)*0.7;
+  const trunkMat=new THREE.MeshStandardMaterial({color:0x4a2e18, roughness:.9});
+  const flare=new THREE.Mesh(new THREE.CylinderGeometry(0.22*sc,0.38*sc,0.28,8), trunkMat);
+  flare.position.y=0.12; flare.castShadow=true; g.add(flare);
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.09*sc,0.2*sc,1.7*sc,7), trunkMat);
+  trunk.position.y=0.95*sc; trunk.castShadow=true; g.add(trunk);
+  for(let b=0;b<3;b++){
+    const br=new THREE.Mesh(new THREE.CylinderGeometry(0.03*sc,0.07*sc,0.7*sc,5), trunkMat);
+    br.position.set((b-1)*0.18*sc, 1.45*sc, 0.05);
+    br.rotation.z=(b-1)*0.7; br.rotation.x=0.35; g.add(br);
+  }
+  const pink=0xf3b6c8, leaf=0x3d6a32, dark=0x2a4a22, gold=0x7a9a40;
+  const canopies=[
+    [0,1.95*sc,0,1.35*sc,pink],[0.55*sc,2.05*sc,-0.25*sc,0.95*sc,pink],
+    [-0.5*sc,2.0*sc,0.35*sc,0.9*sc,leaf], [0.2*sc,2.35*sc,0.4*sc,0.7*sc,gold],
+    [-0.15*sc,2.55*sc,-0.2*sc,0.65*sc,dark], [0.45*sc,1.7*sc,0.45*sc,0.55*sc,leaf]
+  ];
+  canopies.forEach(([cx,cy,cz,r,col],k)=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), new THREE.MeshStandardMaterial({
+      color:col, roughness:0.68, emissive:k===0?0x4a1828:0x000000, emissiveIntensity:k===0?0.18:0
+    }));
+    m.position.set(cx,cy,cz); m.scale.set(1, 0.62, 1); m.castShadow=true; g.add(m);
+  });
+  const nFruit=2+(seedRand(i+9)*3|0);
+  for(let f=0;f<nFruit;f++){
+    const peach=new THREE.Mesh(new THREE.SphereGeometry(0.07*sc,6,5), new THREE.MeshStandardMaterial({color:0xe8899a, roughness:.45}));
+    const a=f*2.1+i; peach.position.set(Math.cos(a)*0.45*sc, 1.55*sc+seedRand(i+f)*0.4, Math.sin(a)*0.45*sc);
+    g.add(peach);
+  }
+  g.position.set(x,0,z); g.rotation.y=seedRand(i+3)*6; scene.add(g); return g;
+}
+function plantOrchard(){
+  const dummy=new THREE.Object3D();
+  function keepClear(x,z){
+    if(Math.abs(x)<2.4) return false;
+    if(Math.hypot(x, z-8)<5) return false;
+    if(Math.hypot(x, z+7)<3.5) return false;
+    return true;
+  }
+  const tuft=new THREE.InstancedMesh(
+    new THREE.ConeGeometry(0.16, 0.18, 6),
+    new THREE.MeshLambertMaterial({color:0x3d6a2a}), 1100);
+  let gi=0;
+  for(let i=0;i<1800 && gi<1100;i++){
+    const x=(seedRand(i)-.5)*88, z=(seedRand(i+4)-.5)*88;
+    if(!keepClear(x,z)) continue;
+    dummy.position.set(x, 0.08, z);
+    dummy.scale.set(0.7+seedRand(i+1)*0.8, 0.55+seedRand(i+2)*0.7, 0.7+seedRand(i+3)*0.8);
+    dummy.rotation.set(0.15, seedRand(i+8)*6, 0.1); dummy.updateMatrix(); tuft.setMatrixAt(gi++, dummy.matrix);
+  }
+  dummy.scale.set(1,1,1);
+  tuft.count=gi; scene.add(tuft);
+  const bloomGeo=new THREE.SphereGeometry(0.055, 6, 5);
+  const flwCols=[0xc9a0e8,0xf2f0e4,0xe889c0,0xf0d060];
+  flwCols.forEach((col,ci)=>{
+    const mesh=new THREE.InstancedMesh(bloomGeo, new THREE.MeshLambertMaterial({color:col}), 180);
+    let n=0;
+    for(let i=0;i<320 && n<180;i++){
+      const x=(seedRand(i+ci*17)-.5)*70, z=(seedRand(i+ci*29)-.5)*70;
+      if(!keepClear(x,z)) continue;
+      dummy.position.set(x, 0.09, z); dummy.scale.setScalar(0.7+seedRand(i)*0.8);
+      dummy.rotation.set(0,0,0); dummy.updateMatrix(); mesh.setMatrixAt(n++, dummy.matrix);
+    }
+    dummy.scale.set(1,1,1);
+    mesh.count=n; scene.add(mesh);
+  });
+  const bushes=new THREE.InstancedMesh(new THREE.SphereGeometry(0.55,8,6), new THREE.MeshStandardMaterial({color:0x2f5a28, roughness:.8}), 70);
+  let bi=0;
+  for(let i=0;i<90 && bi<70;i++){
+    const x=(seedRand(i+80)-.5)*72, z=(seedRand(i+81)-.5)*72;
+    if(!keepClear(x,z) || Math.hypot(x,z)<8) continue;
+    dummy.position.set(x,0.35,z); dummy.scale.setScalar(0.55+seedRand(i)*0.7); dummy.updateMatrix();
+    bushes.setMatrixAt(bi++, dummy.matrix);
+  }
+  dummy.scale.set(1,1,1);
+  bushes.count=bi; scene.add(bushes);
+  for(let row=-4; row<=4; row++){
+    if(row===0) continue;
+    for(let n=0;n<9;n++){
+      const x=row*4.4+(seedRand(row*20+n)-.5)*0.7;
+      const z=-22+n*5.2+(seedRand(n+row)-.5)*0.8;
+      if(Math.abs(x)<2.8 || Math.hypot(x,z-8)<6) continue;
+      makePeachTree(x,z, 200+row*10+n);
+    }
+  }
+  for(let i=0;i<48;i++){
+    const a=i*0.41, r=28+seedRand(i)*22;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    if(Math.abs(x)<2.8 || Math.hypot(x,z)<6) continue;
+    makePeachTree(x,z, 400+i);
+  }
+  for(let i=0;i<14;i++){
+    const log=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,1.8,7), new THREE.MeshStandardMaterial({color:0x3a2414, roughness:.9}));
+    log.rotation.z=1.2; log.rotation.y=seedRand(i)*6;
+    log.position.set((seedRand(i+2)-.5)*50, 0.12, (seedRand(i+5)-.5)*50);
+    scene.add(log);
+  }
+  for(let i=0;i<18;i++){
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(0.22+seedRand(i)*0.28,0), new THREE.MeshStandardMaterial({color:0x7a7468, roughness:.95}));
+    rock.position.set((seedRand(i+11)-.5)*3.4, 0.12, -24+i*2.6);
+    rock.rotation.set(seedRand(i),.4,0.2); scene.add(rock);
+  }
+  const pgeo=new THREE.BufferGeometry();
+  const nP=520, arr=new Float32Array(nP*3);
+  for(let i=0;i<nP;i++){ arr[i*3]=(seedRand(i)-.5)*80; arr[i*3+1]=0.3+seedRand(i+1)*9; arr[i*3+2]=(seedRand(i+2)-.5)*80; }
+  pgeo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const pollen=new THREE.Points(pgeo, new THREE.PointsMaterial({color:0xffe6f2, size:0.07, transparent:true, opacity:0.55, depthWrite:false}));
+  scene.add(pollen);
+  return pollen;
+}
+const pollen=plantOrchard();
+
+const peaches=[];
+const beetle=spr(beetleTex, 1.85, 1.85); beetle.position.set(0,0.95,-7); scene.add(beetle);
+const wyrm=spr(wyrmTex, 3.4, 3.4); wyrm.position.set(16,7.2,-24); scene.add(wyrm);
+const hogs=[];
+[[7,1],[11,-3],[14,5],[-8,2],[-12,-5],[9,11],[-6,13],[15,-9],[4,-11]].forEach(([x,z],i)=>{
+  const s=spr(hogTex,1.55,1.25); s.position.set(x,0.68,z); scene.add(s);
+  hogs.push({s,x,z,hp:42,max:42,alive:true,ph:i});
+});
+for(let i=0;i<10;i++){
+  const p=spr(peachTex,0.5,0.5); const a=i*0.62;
+  const x=Math.cos(a)*5.5, z=Math.sin(a)*5.5-3;
+  p.position.set(x, 0.28, z); scene.add(p);
+  peaches.push({s:p,x,z,eaten:false});
+}
+const sugars=[];
+
+const player={x:0,z:8,yaw:0,pitch:0.04,hp:100,ppl:0,gold:25,xp:0,atkCd:0,invuln:0,hunger:0.85,feedT:0};
+let playing=false, auto=true, target=null, hogKills=0, bagOpen=false, loomBoost=0;
+let drive={forward:0.6,strafe:0,turn:0};
+const keys={};
+const sel=new THREE.Mesh(new THREE.RingGeometry(0.72,0.86,28), new THREE.MeshBasicMaterial({color:0xe8c86a, side:THREE.DoubleSide, transparent:true, opacity:.8}));
+sel.rotation.x=-Math.PI/2; sel.position.y=0.05; sel.visible=false; scene.add(sel);
+
+function chat(cls,t){ const d=document.createElement('div'); d.className=cls; d.textContent=t; $('chat-lines').appendChild(d); $('chat-lines').scrollTop=9e9; }
+function toast(t){ const el=$('toast'); el.textContent=t; el.style.opacity='1'; setTimeout(()=>el.style.opacity='0', 2000); }
+function setDriveHud(){
+  const b=$('quest-body');
+  const food=nearestFood();
+  const st=player.feedT>0?'FEEDING (PER)':(loomBoost>0.3?'ESCAPE (giant fiber)':(player.hunger>0.18 && food?'GOAL · eat '+food.kind+' · '+food.d.toFixed(1)+'m':'EXPLORE · central complex'));
+  b.innerHTML='<b>'+st+'</b><br>hunger '+(player.hunger*100|0)+'% · peaches '+(peaches.filter(p=>!p.eaten).length)+' · sugar '+sugars.length+(ISAAC.ok?' · cortex live':' · local DNs');
+}
+function nearestHog(){
+  let best=null,bd=99;
+  hogs.forEach(h=>{ if(!h.alive) return; const d=Math.hypot(h.x-player.x,h.z-player.z); if(d<bd){bd=d;best=h;} });
+  return best;
+}
+function nearestFood(){
+  let best=null,bd=99;
+  peaches.forEach(p=>{ if(p.eaten) return; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){bd=d;best={kind:'peach',d,x:p.x,z:p.z,ref:p}; } });
+  sugars.forEach(p=>{ const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){bd=d;best={kind:'sugar',d,x:p.x,z:p.z,ref:p}; } });
+  return best;
+}
+function nearest(){ return nearestHog(); }
+function odorField(){
+  let L=0,R=0,C=0;
+  function add(x,z,w){
+    const d=Math.hypot(x-player.x,z-player.z)+0.2;
+    const a=angTo(x,z);
+    const s=w/(d*d);
+    C=Math.max(C,s);
+    if(a< -0.05) L+=s; else if(a>0.05) R+=s; else { L+=s*0.5; R+=s*0.5; }
+  }
+  peaches.forEach(p=>{ if(!p.eaten) add(p.x,p.z,1.4); });
+  sugars.forEach(p=> add(p.x,p.z,2.2));
+  const n=1.8;
+  return {L:Math.min(1,L*n), R:Math.min(1,R*n), C:Math.min(1,C*n)};
+}
+function dropSugar(){
+  const x=player.x+Math.sin(player.yaw)*2.2, z=player.z+Math.cos(player.yaw)*2.2;
+  const s=spr(peachTex,0.42,0.42); s.position.set(x,0.32,z); scene.add(s);
+  sugars.push({s,x,z});
+  chat('ch-s','You drop a sugar bait. Orco neurons should light up.');
+  toast('SUGAR PLUME');
+}
+function feedNow(){
+  const f=nearestFood();
+  if(!f || f.d>1.75) return false;
+  player.feedT=0.7; player.hunger=Math.max(0, player.hunger-0.28); player.ppl=Math.min(1, player.ppl+0.35); player.hp=Math.min(100, player.hp+8);
+  if(f.kind==='peach'){
+    f.ref.eaten=true; f.ref.s.visible=false;
+    setTimeout(()=>{
+      const a=Math.random()*6.28, r=7+Math.random()*10;
+      f.ref.x=Math.cos(a)*r; f.ref.z=Math.sin(a)*r-2;
+      f.ref.eaten=false; f.ref.s.position.set(f.ref.x,0.28,f.ref.z); f.ref.s.visible=true;
+    }, 14000);
+  }
+  else { scene.remove(f.ref.s); sugars.splice(sugars.indexOf(f.ref),1); }
+  chat('ch-n','PER · chose '+f.kind+' · PPL101 reward');
+  toast('FEEDING');
+  return true;
+}
+function attack(){
+  if(!playing||player.atkCd>0) return;
+  if(!target||!target.alive) target=nearestHog();
+  if(!target) return;
+  const d=Math.hypot(target.x-player.x,target.z-player.z);
+  if(d>3.4) return;
+  player.atkCd=0.5; target.hp-=16+Math.random()*10;
+  if(target.hp<=0){ target.alive=false; target.s.visible=false; hogKills++; target=null; chat('ch-s','Hog fled the plume.'); }
+}
+function talk(){
+  if(Math.hypot(player.x, player.z+7)>3.2) return;
+  chat('ch-q','Bramble: Just a beetle. Follow the peaches, little brain.');
+}
+function drink(){
+  player.hp=Math.min(100, player.hp+28); player.ppl=Math.min(1, player.ppl+0.15);
+  chat('ch-n','Synapse flask · R1–R6 bloom');
+}
+
+addEventListener('keydown', e=>{
+  keys[e.code]=true;
+  if(!playing) return;
+  if(e.code==='KeyF'){ auto=!auto; $('mode').textContent=auto?'CONNECTOME AUTOPILOT · the fly is playing':'PILOT · you have the stick'; }
+  if(e.code==='KeyB'){ bagOpen=!bagOpen; $('inv').classList.toggle('on', bagOpen); }
+  if(e.code==='Tab'){ e.preventDefault(); target=nearest(); }
+  if(e.code==='Digit1') attack();
+  if(e.code==='Digit2') drink();
+  if(e.code==='KeyE') talk();
+  if(e.code==='KeyT') dropSugar();
+  if(e.code==='KeyG'){ loomBoost=1; toast('LOOM'); }
+});
+addEventListener('keyup', e=> keys[e.code]=false);
+$('c').addEventListener('click', ()=>{ if(playing) $('c').requestPointerLock(); });
+document.addEventListener('mousemove', e=>{
+  if(!playing||auto||document.pointerLockElement!==$('c')) return;
+  player.yaw -= e.movementX*0.0022;
+  player.pitch = Math.max(-1.1, Math.min(1.1, player.pitch - e.movementY*0.002));
+});
+document.querySelectorAll('.slot').forEach(sl=>{
+  sl.onclick=()=>{ const a=sl.dataset.a; if(a==='1') attack(); if(a==='2') drink(); if(a==='b'){ bagOpen=!bagOpen; $('inv').classList.toggle('on', bagOpen);} };
+});
+
+const bv=$('brainView'), bx=bv.getContext('2d');
+const nodes=[];
+for(let i=0;i<220;i++){
+  const u=Math.random()*2-1, v=Math.random()*2-1;
+  nodes.push({x:420+u*190+(u<0?-40:40), y:110+v*70, lobe:Math.abs(u)>0.45?1:0});
+}
+function drawBrain(t){
+  bx.clearRect(0,0,840,220);
+  bx.fillStyle='rgba(8,10,18,0.35)'; bx.fillRect(0,0,840,220);
+  const votes=(window.FlyBrain&&FlyBrain.neurons&&FlyBrain.neurons.votes)||[];
+  nodes.forEach((n,i)=>{
+    const pulse=0.35+0.65*Math.abs(Math.sin(t*0.003+i*0.2));
+    const v=votes[i%8]||0;
+    bx.fillStyle=n.lobe?`rgba(77,232,210,${0.25+v*0.6})`:`rgba(232,200,106,${0.2+pulse*0.5})`;
+    bx.beginPath(); bx.arc(n.x, n.y, 1.6+v*2.5, 0, 7); bx.fill();
+  });
+  bx.strokeStyle='rgba(77,232,210,.25)'; bx.strokeRect(8,8,824,204);
+  bx.fillStyle='#4de8d2'; bx.font='11px monospace';
+  const n=window.FlyBrain&&FlyBrain.neurons;
+  bx.fillText('166,700  ·  DN votes ['+(votes.map(v=>v.toFixed(1)).join(' '))+']', 16, 22);
+  if(n) bx.fillText('PPL101 '+(n.ppl101||0).toFixed(2), 16, 38);
+}
+
+function sensesNow(){
+  const n=nearestHog();
+  const distT=n?Math.min(1, Math.hypot(n.x-player.x,n.z-player.z)/16):1;
+  const hogInView=n?Math.max(0, 1-distT):0;
+  const distN=Math.min(1, Math.hypot(player.x, player.z+7)/16);
+  const od=odorField();
+  const food=nearestFood();
+  const hogD=n?Math.hypot(n.x-player.x,n.z-player.z):99;
+  const loom=Math.max(loomBoost, hogD<3.2? Math.min(1, (3.2-hogD)/3.2):0);
+  return {
+    r1:od.L*(0.5+hogInView*0.3), r2:od.C*0.7, r3:od.R*0.8,
+    r4:hogInView*0.55, r5:od.R, r6:od.L, r8:0.4,
+    smell: od.C, odorL: od.L, odorR: od.R,
+    ppl101: player.ppl, hp: player.hp/100, distTarget: distT, distNpc: distN,
+    hasTarget: !!(target&&target.alive), hogHp: target? target.hp/target.max:1,
+    hunger: player.hunger, sugarNear: food? Math.max(0, 1-food.d/8):0,
+    foodAng: food? Math.max(-1, Math.min(1, angTo(food.x,food.z)/Math.PI)):0,
+    foodDist: food? +food.d.toFixed(2):99,
+    loom, gold: player.gold, yaw: +player.yaw.toFixed(3),
+    hogCount: hogs.filter(h=>h.alive).length, foodKind: food?food.kind:'none'
+  };
+}
+
+function angTo(x,z){
+  const want=Math.atan2(x-player.x, z-player.z);
+  let d=want-player.yaw;
+  while(d>Math.PI) d-=Math.PI*2;
+  while(d<-Math.PI) d+=Math.PI*2;
+  return d;
+}
+function seeReport(){
+  const bits=[];
+  const food=nearestFood();
+  if(food){
+    const a=angTo(food.x,food.z);
+    const side=a<-0.2?'left':(a>0.2?'right':'ahead');
+    bits.push(food.kind+' '+side+' at '+food.d.toFixed(1)+'m — approach and feed');
+  } else bits.push('no sugar in plume — search, do not idle');
+  hogs.forEach((h)=>{
+    if(!h.alive) return;
+    const dist=Math.hypot(h.x-player.x,h.z-player.z);
+    const a=angTo(h.x,h.z);
+    if(Math.abs(a)<1.05 && dist<22){
+      const side=a<-0.2?'left':(a>0.2?'right':'ahead');
+      bits.push('loom hog '+side+' '+dist.toFixed(1)+'m'+(dist<3?' ESCAPE':' ignore food first'));
+    }
+  });
+  const nd=Math.hypot(player.x, player.z+7);
+  if(nd<4) bits.push('beetle nearby (optional talk)');
+  bits.push('hunger='+player.hunger.toFixed(2)+' hp='+Math.ceil(player.hp)+' ppl101='+player.ppl.toFixed(2)+' loom='+loomBoost.toFixed(2));
+  return bits.join('; ');
+}
+
+const ISAAC={busy:false,last:{forward:0.7,strafe:0,turn:0.15,fire:0,talk:0,dart:0,feed:0},ok:false,ms:0,note:'',fail:0};
+function setIsaacHud(){
+  const st=$('isaacState'), note=$('isaacNote');
+  if(!st) return;
+  if(ISAAC.busy) st.textContent='thinking… '+(ISAAC.ms?ISAAC.ms+'ms last':'');
+  else if(ISAAC.ok) st.textContent='live · '+ISAAC.ms+'ms';
+  else st.textContent=ISAAC.fail?'offline (local DN only)':'idle';
+  note.textContent=ISAAC.note||'';
+}
+async function isaacTick(){
+  if(!playing||!auto||ISAAC.busy) return;
+  ISAAC.busy=true; setIsaacHud();
+  const t0=performance.now();
+  try{
+    const r=await fetch('/tick',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({senses:sensesNow(), see:seeReport()})
+    });
+    const j=await r.json();
+    ISAAC.ms=j.ms||Math.round(performance.now()-t0);
+    if(j.ok && j.motor){
+      ISAAC.last=j.motor; ISAAC.ok=true; ISAAC.fail=0;
+      ISAAC.note=j.note||j.motor.note||'';
+      if(ISAAC.note) chat('ch-n','Isaac cortex · '+ISAAC.note);
+    } else {
+      ISAAC.fail++; ISAAC.ok=false; ISAAC.note=j.error||'no motor';
+    }
+  }catch(e){
+    ISAAC.fail++; ISAAC.ok=false; ISAAC.note='bridge down — start server.py';
+  }
+  ISAAC.busy=false; setIsaacHud();
+}
+
+const Snd={ctx:null, init(){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} },
+  tick(){ if(!this.ctx) return; const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.frequency.value=180+Math.random()*40; o.type='sine'; g.gain.value=0.015;
+    o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.05); }};
+
+$('enter').onclick=()=>{
+  try{
+    $('title').classList.add('gone'); $('hud').classList.add('on'); playing=true; auto=true;
+    Snd.init(); if(Snd.ctx&&Snd.ctx.state==='suspended') Snd.ctx.resume();
+    if(window.FlyBrain) FlyBrain.reset();
+    const z=$('zone'); z.style.opacity='1'; setTimeout(()=>z.style.opacity='0', 2600);
+    chat('ch-g','[Guild] Isaac: I already read the whole raid notes.');
+    chat('ch-p','[Party] Cursor: I\'ll drive. You generate the loot table.');
+    chat('ch-n','MaleCNS online · local DNs 60Hz · Isaac cortex motor setpoints');
+    setDriveHud(); toast('CORTEX ONLINE');
+    try{ $('c').requestPointerLock(); }catch(e2){}
+    isaacTick();
+    if(!window._isaacIv) window._isaacIv=setInterval(isaacTick, 2400);
+  }catch(err){ console.error(err); }
+};
+
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+const mm=$('minimap').getContext('2d');
+let last=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(t-last)/1000||0.016); last=t;
+  if(playing){
+    let fwd=0, str=0;
+    if(auto && window.FlyBrain){
+      const act=FlyBrain.tick(sensesNow());
+      const I=ISAAC.last||{};
+      const foodG=nearestFood();
+      const hunting=player.hunger>0.16 && foodG && loomBoost<0.35;
+      const mix=hunting?0.28:0.55;
+      fwd=act.forward*(1-mix)+(I.forward||0)*mix;
+      str=act.strafe*(1-mix)+(I.strafe||0)*mix;
+      player.yaw+=(act.turn*(1-mix)+(I.turn||0)*mix)*2.1*dt;
+      if(hunting){
+        const a=angTo(foodG.x, foodG.z);
+        player.yaw += Math.max(-1.25, Math.min(1.25, a)) * 2.8 * dt;
+        if(Math.abs(a)<0.85) fwd=Math.max(fwd, 0.62);
+        else fwd=Math.max(0.22, Math.min(fwd, 0.4));
+      }
+      if(act.dart || I.dart || loomBoost>0.4) fwd=Math.min(fwd, -0.85);
+      if(hunting && foodG.d<1.75){ feedNow(); fwd*=0.08; }
+      else if(act.feed>0.5 || I.feed){
+        if(feedNow()) I.feed=0;
+        fwd*=0.15;
+      }
+      else if(act.fire>0.85 && I.fire && !hunting) attack();
+      if(I.talk && Math.hypot(player.x, player.z+7)<3.2) talk();
+      if(act.fear>0.5) player.ppl=Math.min(1, player.ppl+dt*0.2);
+      if(Math.abs(fwd)<0.08 && Math.abs(I.turn||0)<0.05) fwd=0.28;
+      drive={forward:fwd,strafe:str,turn:I.turn||act.turn, hunting:!!hunting};
+    } else {
+      fwd=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+      str=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+    }
+    const food=nearestFood();
+    const hog=nearestHog();
+    const fruitNear=!!(food&&food.d<5.8);
+    const foeNear=!!(hog&&Math.hypot(hog.x-player.x,hog.z-player.z)<6.8);
+    let haste=0.4;
+    if(drive.hunting) haste=fruitNear?1:0.78;
+    else if(fruitNear||foeNear) haste=1;
+    if(loomBoost>0.25) haste=1.12;
+    if(player.feedT>0) haste=0.18;
+    drive.haste=haste;
+    const sp=6.2*dt*haste;
+    player.x += Math.sin(player.yaw)*fwd*sp + Math.cos(player.yaw)*str*sp;
+    player.z += Math.cos(player.yaw)*fwd*sp - Math.sin(player.yaw)*str*sp;
+    player.x=Math.max(-34,Math.min(34,player.x)); player.z=Math.max(-34,Math.min(34,player.z));
+    if(player.atkCd>0) player.atkCd-=dt;
+    if(player.invuln>0) player.invuln-=dt;
+    if(player.feedT>0) player.feedT-=dt;
+    loomBoost=Math.max(0, loomBoost-dt*1.4);
+    player.hunger=Math.min(1, player.hunger+0.04*dt);
+    player.ppl=Math.max(0, player.ppl-0.08*dt);
+    if(!target||!target.alive) target=nearest();
+    if(auto){
+      const wantP=(loomBoost>0.25?-0.38:0)+(player.feedT>0?-0.22:0)+Math.sin(t*0.0017)*0.07+drive.forward*0.05;
+      player.pitch += (wantP-player.pitch)*Math.min(1, dt*2.4);
+    }
+    player.pitch=Math.max(-0.9, Math.min(0.85, player.pitch));
+    setDriveHud();
+  }
+  wyrm.position.x=16+Math.sin(t*0.00035)*7;
+  if(pollen){
+    pollen.rotation.y=t*0.00004;
+    pollen.position.y=Math.sin(t*0.0004)*0.15;
+  }
+  hogs.forEach(h=>{
+    if(!h.alive) return;
+    h.ph+=dt; h.x+=Math.sin(h.ph*0.35)*0.01; h.z+=Math.cos(h.ph*0.3)*0.01;
+    h.s.position.set(h.x,0.68,h.z);
+    if(playing && Math.hypot(h.x-player.x,h.z-player.z)<1.05 && player.invuln<=0){
+      player.hp=Math.max(0, player.hp-18*dt); player.ppl=Math.min(1, player.ppl+0.4*dt); player.invuln=0.05;
+    }
+  });
+  const foodSel=nearestFood();
+  if(playing && auto && player.hunger>0.16 && foodSel && loomBoost<0.35){
+    sel.visible=true; sel.position.set(foodSel.x,0.06,foodSel.z);
+    sel.material.color.setHex(0xf2a0c0);
+    $('target').classList.add('on'); $('t-hp').style.width=Math.max(8, 100-foodSel.d*8)+'%';
+    $('t-name').textContent='Goal · '+(foodSel.kind==='peach'?'peach':'sugar')+' · '+foodSel.d.toFixed(1)+'m';
+  } else if(target&&target.alive){
+    sel.visible=true; sel.position.set(target.x,0.05,target.z);
+    sel.material.color.setHex(0xe8c86a);
+    $('target').classList.add('on'); $('t-hp').style.width=(100*target.hp/target.max)+'%'; $('t-name').textContent='Moss-Hog';
+  } else { sel.visible=false; $('target').classList.remove('on'); }
+
+  camera.position.set(player.x, 0.58, player.z);
+  camera.rotation.set(player.pitch * 0.45 - 0.06, player.yaw + Math.PI, 0);
+  sky.position.copy(camera.position);
+
+  const lookX=Math.sin(player.yaw), lookZ=Math.cos(player.yaw);
+  const spd=Math.hypot(drive.forward||0, drive.strafe||0);
+  flyMot.turn += ((player.yaw-flyMot.yaw)/Math.max(dt,0.001) - flyMot.turn)*0.18;
+  flyMot.yaw=player.yaw;
+  const hover=Math.sin(t*0.007)*0.05 + Math.sin(t*0.019)*0.025;
+  const flap=1+Math.sin(t*0.045)*0.04 + spd*0.03;
+  const dartN=loomBoost>0.2?1:0;
+  const feedN=player.feedT>0?1:0;
+  const flyY=0.42 + hover + player.pitch*0.55 - dartN*0.12 - feedN*0.18;
+  hero.visible=false;
+  hero.position.set(player.x+lookX*0.72 - Math.cos(player.yaw)*0.12, flyY, player.z+lookZ*0.72 + Math.sin(player.yaw)*0.12);
+  hero.scale.set(0.52*flap, 0.52*flap*(feedN?0.88:1), 1);
+
+  const rig=$('flyRig');
+  if(rig){
+    const bob=Math.sin(t*0.007)*14 + Math.sin(t*0.02)*7;
+    const lift=-player.pitch*210 - dartN*28 + feedN*36;
+    const sway=-flyMot.turn*22 + Math.sin(t*0.005)*8;
+    const roll=-flyMot.turn*12 + Math.sin(t*0.011)*3 + (drive.strafe||0)*8;
+    const dip=feedN?8:0;
+    const sc=0.92+spd*0.06 + Math.sin(t*0.04)*0.025 - feedN*0.06;
+    rig.style.opacity=playing?'0.94':'0';
+    rig.style.transform='translate('+sway.toFixed(1)+'px,'+(bob+lift+dip).toFixed(1)+'px) rotate('+roll.toFixed(2)+'deg) scale('+sc.toFixed(3)+')';
+  }
+  drawFlyPose(t, drive.haste||0.36);
+
+  const n=nearest();
+  const vis=n?Math.max(0.15, 1-Math.hypot(n.x-player.x,n.z-player.z)/14):0.12;
+  for(let i=0;i<6;i++) $('r'+i).style.height=Math.round(18+vis*70*(0.5+0.5*Math.sin(t*0.01+i)))+'%';
+  $('hp-fill').style.width=player.hp+'%'; $('hp-text').textContent=Math.ceil(player.hp)+' / 100';
+  $('dopa-fill').style.width=(player.ppl*100)+'%';
+  drawBrain(t);
+
+  mm.fillStyle='#132014'; mm.fillRect(0,0,120,120);
+  mm.strokeStyle='#4de8d2'; mm.strokeRect(0,0,120,120);
+  hogs.forEach(h=>{ if(!h.alive) return; mm.fillStyle='#c0392b'; mm.fillRect(60+h.x*1.5,60+h.z*1.5,3,3); });
+  peaches.forEach(p=>{ if(p.eaten) return; mm.fillStyle='#e8a0c0'; mm.fillRect(60+p.x*1.5,60+p.z*1.5,2,2); });
+  sugars.forEach(p=>{ mm.fillStyle='#ffe08a'; mm.fillRect(60+p.x*1.5,60+p.z*1.5,2,2); });
+  mm.fillStyle='#e8c86a'; mm.beginPath(); mm.arc(60+player.x*1.5,60+player.z*1.5,3,0,7); mm.fill();
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
